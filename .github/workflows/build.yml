@@ -6,20 +6,27 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Unzip
-        run: unzip -o *.zip -d src
-      - uses: actions/setup-java@v4
+      - uses: actions/checkout@v5
+      - name: Prepare
+        run: |
+          ls -la
+          shopt -s nullglob
+          for z in *.zip; do unzip -o "$z" -d src; done
+          F=$(find . -name settings.gradle.kts -not -path './.git/*' | head -1)
+          if [ -z "$F" ]; then echo "프로젝트를 찾을 수 없음"; find . -not -path './.git/*' | head -50; exit 1; fi
+          echo "PROJ=$(dirname "$F")" >> $GITHUB_ENV
+          echo "프로젝트 위치: $(dirname "$F")"
+      - uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: 17
       - uses: android-actions/setup-android@v3
       - name: Build
-        working-directory: src/EarAlarm
         run: |
+          cd "$PROJ"
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon
       - uses: actions/upload-artifact@v4
         with:
           name: EarAlarm-apk
-          path: src/EarAlarm/app/build/outputs/apk/release/*.apk
+          path: "**/build/outputs/apk/release/*.apk"
